@@ -72,7 +72,6 @@ def grad_cdf_value_scale(value, scale, c, dim):
             + torch.log(sign_log_arg * log_arg)
 
     log_grad_sum_sigma = log_sum_exp_signs(s, signs * sign_log_arg, dim=0)
-    grad_sum_sigma = torch.sum(signs * sign_log_arg * torch.exp(s), dim=0)
 
     s1 = torch.lgamma(dim) - torch.lgamma(k_float + 1) - torch.lgamma(dim - k_float) \
         + (dim - 1 - 2 * k_float).pow(2) * c * scale.pow(2) / 2 \
@@ -81,8 +80,10 @@ def grad_cdf_value_scale(value, scale, c, dim):
             + torch.erf((dim - 1 - 2 * k_float) * c.sqrt() * scale / math.sqrt(2)) \
         )
 
+
     S1 = log_sum_exp_signs(s1, signs, dim=0)
-    grad_log_cdf_scale = grad_sum_sigma / S1.exp()
+    grad_sum_sigma = torch.sum(signs * sign_log_arg * torch.exp(s-S1), dim=0)
+    grad_log_cdf_scale = grad_sum_sigma
     log_unormalised_prob = - value.pow(2) / (2 * scale.pow(2)) + (dim - 1) * logsinh(c.sqrt() * value) - (dim - 1) / 2 * c.log()
     
     with torch.autograd.enable_grad():
@@ -233,7 +234,7 @@ class HyperbolicRadius(dist.Distribution):
         return res
 
     def grad_log_prob(self, value):
-        res = - value / self.scale.pow(2) + (self.dim - 1) * self.c.sqrt() * torch.cosh(self.c.sqrt() * value) / torch.sinh(self.c.sqrt() * value) 
+        res = - value / self.scale.pow(2) + (self.dim - 1) * self.c.sqrt() / torch.tanh(self.c.sqrt() * value)
         return res
 
     def cdf(self, value):
